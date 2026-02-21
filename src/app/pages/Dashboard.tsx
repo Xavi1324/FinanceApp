@@ -51,23 +51,23 @@ export function Dashboard() {
   
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-6 lg:p-8">
       {/* Top Controls */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 md:mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-semibold text-gray-900 mb-2">
+          <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-2">
             Weekly Budget Overview
           </h1>
-          <p className="text-gray-500">Manage your weekly finances</p>
+          <p className="text-gray-500 text-sm md:text-base">Manage your weekly finances</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           {/* Week Selector */}
           <div className="relative">
             <select
               value={currentWeekId || ''}
               onChange={(e) => setCurrentWeek(e.target.value)}
-              className="appearance-none bg-white border border-gray-300 rounded-lg pl-4 pr-10 py-3 font-medium text-gray-900 hover:border-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
+              className="appearance-none bg-white border border-gray-300 rounded-lg pl-4 pr-10 py-3 font-medium text-gray-900 hover:border-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer w-full sm:w-auto"
             >
               {weeks.map(week => (
                 <option key={week.id} value={week.id}>
@@ -81,18 +81,19 @@ export function Dashboard() {
           {/* Add Week Button */}
           <button
             onClick={() => setIsWeekModalOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-5 py-3 rounded-lg font-medium hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg"
+            className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-5 py-3 rounded-lg font-medium hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg"
           >
             <Plus className="w-5 h-5" />
-            Add Week
+            <span className="hidden sm:inline">Add Week</span>
+            <span className="sm:hidden">Add</span>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-[1fr_320px] gap-8">
-        <div className="space-y-8">
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6 lg:gap-8">
+        <div className="space-y-6 lg:space-y-8">
           {/* Summary Cards */}
-          <div className="grid grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
             {/* Card 1: Initial Balance */}
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <div className="flex items-start justify-between mb-3">

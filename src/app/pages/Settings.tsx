@@ -25,16 +25,13 @@ export function Settings() {
   };
 
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-gray-900 mb-2">
-          Settings
-        </h1>
-        <p className="text-gray-500">Manage your application preferences</p>
+    <div className="p-4 md:p-6 lg:p-8 max-w-4xl">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-2">Settings</h1>
+        <p className="text-gray-500 text-sm md:text-base">Manage your app preferences</p>
       </div>
 
-      <div className="max-w-2xl">
+      <div className="space-y-4 md:space-y-6">
         {/* Settings Sections */}
         <div className="space-y-6">
           {/* Currency Settings */}
