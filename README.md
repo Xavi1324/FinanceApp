@@ -1,8 +1,7 @@
 
   # Personal Finance Dashboard UI
 
-  This is a code bundle for Personal Finance Dashboard UI. The original project is available at https://www.figma.com/design/QRuVF0XRoxcqB9XMvSQ1WU/Personal-Finance-Dashboard-UI.
-
+  This is a code bundle for Personal Finance Dashboard UI. 
   ## Running the code
 
   Run `npm i` to install the dependencies.
