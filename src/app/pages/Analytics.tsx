@@ -8,16 +8,25 @@ export function Analytics() {
   const { weeks } = useApp();
 
   // Monthly spending data (simulated from weeks)
-  const monthlyData = [
-    { month: 'Jan', spending: 1850 },
-    { month: 'Feb', spending: weeks.reduce((sum, w) => sum + w.expenses.reduce((s, e) => s + e.amount, 0), 0) },
-    { month: 'Mar', spending: 2100 },
-    { month: 'Apr', spending: 1950 },
-  ];
+  const monthlyMap = new Map<string, number>();
+
+  weeks.forEach(week => {
+    const month = new Date(week.startDate).toLocaleDateString("en-US", { month: "short" });
+
+    const totalExpenses = week.expenses.reduce((sum, e) => sum + e.amount, 0);
+
+    const current = monthlyMap.get(month) || 0;
+    monthlyMap.set(month, current + totalExpenses);
+  });
+
+  const monthlyData = Array.from(monthlyMap.entries()).map(([month, spending]) => ({
+    month,
+    spending
+  }));
 
   // Weekly comparison data
   const weeklyComparison = weeks.map((week, index) => ({
-    week: `Week ${index + 1}`,
+    week: new Date(week.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
     income: week.income,
     expenses: week.expenses.reduce((sum, exp) => sum + exp.amount, 0)
   }));
@@ -40,8 +49,8 @@ export function Analytics() {
   const trendData = weeks.map((week, index) => {
     const totalExpenses = week.expenses.reduce((sum, exp) => sum + exp.amount, 0);
     return {
-      week: `W${index + 1}`,
-      income: week.income,
+        week: new Date(week.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        income: week.income,
       expenses: totalExpenses,
       net: week.income - totalExpenses
     };

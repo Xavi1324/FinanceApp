@@ -107,14 +107,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { totalExpenses, currentBalance, remainingBalance };
   };
   const updateExpense = async (expenseId: string, activity: string, amount: number) => {
-  try {
-    await dbUpdateExpense(expenseId, { activity, amount });
-    await refresh();
-  } catch (e) {
-    console.error("updateExpense error:", e);
-    alert("Error updating expense. Check console.");
-  }
-};
+    try {
+      await dbUpdateExpense(expenseId, { activity, amount });
+      await recomputeChain();
+      await refresh();
+    } catch (e) {
+      console.error("updateExpense error:", e);
+      alert("Error updating expense. Check console.");
+    }
+  };
 
   const refresh = async () => {
     setLoading(true);
@@ -143,6 +144,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   };
+  const recomputeChain = async () => {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) throw error;
+
+    const uid = data.user?.id;
+    if (!uid) return;
+
+    const { error: rpcError } = await supabase.rpc("recompute_week_chain", { p_user: uid });
+    if (rpcError) throw rpcError;
+  };
+
 
   useEffect(() => {
     refresh();
@@ -154,14 +166,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Usar remaining de la semana actual (si existe) como initial_balance
       const initialFromPrev = currentWeek ? getWeekTotals(currentWeek).remainingBalance : 0;
 
-      await dbCreateWeek({
+      const newWeek = await dbCreateWeek({
         start_date: startDate,
         end_date: endDate,
         initial_balance: Number(initialFromPrev.toFixed(2)),
         income: settings.defaultWeeklyIncome,
       });
-
+      await recomputeChain();
       await refresh();
+      setCurrentWeekId(newWeek.id);
     } catch (e) {
       console.error("addWeek error:", e);
       alert("Error creating week. Check console.");
@@ -175,6 +188,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
 
       // refrescar y arreglar selección
+      await recomputeChain();
       await refresh();
     } catch (e) {
       console.error("deleteWeek error:", e);
@@ -187,6 +201,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addExpense = async (weekId: string, activity: string, amount: number) => {
     try {
       await dbAddExpense({ week_id: weekId, activity, amount });
+      await recomputeChain();
       await refresh();
       setCurrentWeekId(weekId);
     } catch (e) {
@@ -198,6 +213,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const deleteExpense = async (_weekId: string, expenseId: string) => {
     try {
       await dbDeleteExpense(expenseId);
+      await recomputeChain();
       await refresh();
     } catch (e) {
       console.error("deleteExpense error:", e);
@@ -208,6 +224,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateWeekIncome = async (weekId: string, income: number) => {
     try {
       await dbUpdateWeekIncome(weekId, income);
+      await recomputeChain();
       await refresh();
       setCurrentWeekId(weekId);
     } catch (e) {
@@ -230,6 +247,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.from("weeks").delete().neq("id", "00000000-0000-0000-0000-000000000000");
       if (error) throw error;
 
+      await recomputeChain();
       await refresh();
     } catch (e) {
       console.error("resetAllData error:", e);
