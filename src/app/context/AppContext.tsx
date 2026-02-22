@@ -11,6 +11,7 @@ import {
   dbUpdateExpense,
 } from "../lib/db";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "./AuthContext";
 
 export interface Expense {
   id: string;
@@ -94,6 +95,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [currentWeekId, setCurrentWeekId] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [loading, setLoading] = useState(false);
+  const { user, loading: authLoading } = useAuth();
+  const userId = user?.id ?? null;
 
   const currentWeek = useMemo(
     () => weeks.find((w) => w.id === currentWeekId) ?? (weeks.length ? weeks[0] : null),
@@ -120,8 +123,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const refresh = async () => {
     setLoading(true);
     try {
-      const weekRows = await dbGetWeeks();
+      const { data } = await supabase.auth.getUser();
+      const uid = data.user?.id;
+      if (!uid) { // si ya no hay sesión, no sigas
+        setWeeks([]);
+        setCurrentWeekId(null);
+        return;
+      }
 
+
+      const weekRows = await dbGetWeeks();
       // Traer expenses por cada week (MVP simple)
       const mapped: Week[] = [];
       for (const w of weekRows) {
@@ -157,9 +168,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
+    // Espera a que el AuthContext termine de resolver si hay sesión o no
+    if (authLoading) return;
+
+    // Si no hay usuario (logout) => limpia estado
+    if (!userId) {
+      setWeeks([]);
+      setCurrentWeekId(null);
+      setLoading(false);
+      return;
+    }
+
+    // Si hay usuario (login / cambio de usuario) => carga data
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [userId, authLoading]);
 
   const addWeek = async (startDate: string, endDate: string) => {
     try {
