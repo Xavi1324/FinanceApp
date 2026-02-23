@@ -1,30 +1,64 @@
-import { useState } from 'react';
-import { Plus, Trash2, Calendar } from 'lucide-react';
-import { useApp } from '../context/AppContext';
-import { AddWeekModal } from '../components/AddWeekModal';
+import { useState } from "react";
+import { Plus, Trash2, Calendar } from "lucide-react";
+import { useApp } from "../context/AppContext";
+import { AddWeekModal } from "../components/AddWeekModal";
+import { DeleteWeekModal } from "../components/DeleteWeekModal"; // ✅ NEW
 
 export function Weeks() {
   const { weeks, addWeek, deleteWeek, setCurrentWeek } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // ✅ Delete modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [weekToDelete, setWeekToDelete] = useState<{
+    id: string;
+    startDate: string;
+    endDate: string;
+    expenseCount: number;
+  } | null>(null);
+
   const formatDate = (dateStr: string) => {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const date = new Date(y, m - 1, d); // LOCAL (no UTC)
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const date = new Date(y, m - 1, d); // ✅ LOCAL (no UTC)
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
   const getWeekStats = (weekId: string) => {
-    const week = weeks.find(w => w.id === weekId);
+    const week = weeks.find((w) => w.id === weekId);
     if (!week) return { totalIncome: 0, totalExpenses: 0, remainingBalance: 0 };
-    
+
     const totalExpenses = week.expenses.reduce((sum, exp) => sum + exp.amount, 0);
     const remainingBalance = week.initialBalance + week.income - totalExpenses;
-    
+
     return {
       totalIncome: week.income,
       totalExpenses,
-      remainingBalance
+      remainingBalance,
     };
+  };
+
+  // ✅ abre modal con data de la semana
+  const handleOpenDeleteWeekModal = (week: {
+    id: string;
+    startDate: string;
+    endDate: string;
+    expenses: { amount: number }[];
+  }) => {
+    setWeekToDelete({
+      id: week.id,
+      startDate: week.startDate,
+      endDate: week.endDate,
+      expenseCount: week.expenses.length,
+    });
+    setIsDeleteModalOpen(true);
+  };
+
+  // ✅ confirma y borra
+  const handleConfirmDeleteWeek = () => {
+    if (!weekToDelete) return;
+    deleteWeek(weekToDelete.id);
+    setIsDeleteModalOpen(false);
+    setWeekToDelete(null);
   };
 
   return (
@@ -67,16 +101,11 @@ export function Weeks() {
                     <div className="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center">
                       <Calendar className="w-6 h-6 text-blue-600" />
                     </div>
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (
-                          window.confirm(
-                            "Are you sure you want to delete this week?",
-                          )
-                        ) {
-                          deleteWeek(week.id);
-                        }
+                        handleOpenDeleteWeekModal(week);
                       }}
                       className="text-gray-400 hover:text-red-600 transition-colors p-2"
                     >
@@ -93,25 +122,21 @@ export function Weeks() {
 
                   <div className="space-y-3">
                     <div className="flex items-center justify-between py-2 border-t border-gray-100">
-                      <span className="text-sm text-gray-600">
-                        Total Income
-                      </span>
+                      <span className="text-sm text-gray-600">Total Income</span>
                       <span className="text-sm font-semibold text-green-600">
                         +${stats.totalIncome.toFixed(2)}
                       </span>
                     </div>
+
                     <div className="flex items-center justify-between py-2 border-t border-gray-100">
-                      <span className="text-sm text-gray-600">
-                        Total Expenses
-                      </span>
+                      <span className="text-sm text-gray-600">Total Expenses</span>
                       <span className="text-sm font-semibold text-red-600">
                         -${stats.totalExpenses.toFixed(2)}
                       </span>
                     </div>
+
                     <div className="flex items-center justify-between py-2 border-t border-gray-100">
-                      <span className="text-sm text-gray-600">
-                        Remaining
-                      </span>
+                      <span className="text-sm text-gray-600">Remaining</span>
                       <span className="text-sm font-semibold text-blue-600">
                         ${stats.remainingBalance.toFixed(2)}
                       </span>
@@ -121,8 +146,7 @@ export function Weeks() {
 
                 <div className="bg-gray-50 px-6 py-3 border-t border-gray-100">
                   <p className="text-xs text-gray-500">
-                    {week.expenses.length} transaction
-                    {week.expenses.length !== 1 ? "s" : ""}
+                    {week.expenses.length} transaction{week.expenses.length !== 1 ? "s" : ""}
                   </p>
                 </div>
               </div>
@@ -136,6 +160,22 @@ export function Weeks() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={addWeek}
+      />
+
+      {/* ✅ DeleteWeekModal */}
+      <DeleteWeekModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setWeekToDelete(null);
+        }}
+        onConfirm={handleConfirmDeleteWeek}
+        weekRange={
+          weekToDelete
+            ? `${formatDate(weekToDelete.startDate)} - ${formatDate(weekToDelete.endDate)}`
+            : ""
+        }
+        expenseCount={weekToDelete?.expenseCount || 0}
       />
     </div>
   );

@@ -15,6 +15,7 @@ export type DbExpenseRow = {
   activity: string;
   amount: number | string;
   created_at: string;
+  paid: boolean | null;
 };
 
 export async function dbGetWeeks() {
@@ -73,28 +74,38 @@ export async function dbUpdateWeekIncome(weekId: string, income: number) {
   if (error) throw error;
   return data as DbWeekRow;
 }
-export async function dbUpdateExpense(expenseId: string, payload: { activity: string; amount: number }) {
-  const { data, error } = await supabase
+export async function dbUpdateExpense(
+  expenseId: string,
+  patch: { activity?: string; amount?: number; paid?: boolean }
+) {
+  const userId = await requireUserId();
+
+  const { error } = await supabase
     .from("expenses")
-    .update(payload)
+    .update(patch)
     .eq("id", expenseId)
-    .select("*")
-    .single();
+    .eq("user_id", userId);         // ✅ evita que RLS te lo bloquee
 
   if (error) throw error;
-  return data as DbExpenseRow;
 }
 
 export async function dbAddExpense(payload: {
   week_id: string;
   activity: string;
   amount: number;
+  paid?: boolean;
 }) {
   const userId = await requireUserId();
 
   const { data, error } = await supabase
     .from("expenses")
-    .insert({ ...payload, user_id: userId })
+    .insert({
+      week_id: payload.week_id,
+      user_id: userId,              // ✅ IMPORTANTÍSIMO
+      activity: payload.activity,
+      amount: payload.amount,
+      paid: payload.paid ?? false,
+    })
     .select("*")
     .single();
 
@@ -103,10 +114,13 @@ export async function dbAddExpense(payload: {
 }
 
 export async function dbDeleteExpense(expenseId: string) {
+  const userId = await requireUserId();
+
   const { error } = await supabase
     .from("expenses")
     .delete()
-    .eq("id", expenseId);
+    .eq("id", expenseId)
+    .eq("user_id", userId);         // ✅ igual aquí
 
   if (error) throw error;
 }

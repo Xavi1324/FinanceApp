@@ -17,6 +17,7 @@ export interface Expense {
   id: string;
   activity: string;
   amount: number;
+  paid: boolean; 
 }
 
 export interface Week {
@@ -46,6 +47,7 @@ interface AppContextType {
 
   addExpense: (weekId: string, activity: string, amount: number) => Promise<void>;
   deleteExpense: (weekId: string, expenseId: string) => Promise<void>;
+  toggleExpensePaid: (weekId: string, expenseId: string) => Promise<void>;
 
   updateWeekIncome: (weekId: string, income: number) => Promise<void>;
   updateExpense: (expenseId: string, activity: string, amount: number) => Promise<void>;
@@ -76,6 +78,7 @@ function mapExpenseRow(r: DbExpenseRow): Expense {
     id: r.id,
     activity: r.activity,
     amount: toNumber(r.amount),
+    paid: r.paid ?? false,
   };
 }
 
@@ -125,29 +128,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const { data } = await supabase.auth.getUser();
       const uid = data.user?.id;
-      if (!uid) { // si ya no hay sesión, no sigas
+      if (!uid) {
         setWeeks([]);
         setCurrentWeekId(null);
         return;
       }
 
-
       const weekRows = await dbGetWeeks();
-      // Traer expenses por cada week (MVP simple)
-      const mapped: Week[] = [];
-      for (const w of weekRows) {
-        const expRows = await dbGetExpenses(w.id);
-        const exps = expRows.map(mapExpenseRow);
-        mapped.push(mapWeekRow(w, exps));
-      }
+
+      const expensesByWeek = await Promise.all(
+        weekRows.map(async (w) => {
+          const expRows = await dbGetExpenses(w.id);
+          return { weekId: w.id, expenses: expRows.map(mapExpenseRow) };
+        })
+      );
+
+      const expMap = new Map(expensesByWeek.map(x => [x.weekId, x.expenses]));
+
+      const mapped: Week[] = weekRows.map(w => mapWeekRow(w, expMap.get(w.id) ?? []));
 
       setWeeks(mapped);
 
-      // Selección inicial
-      if (mapped.length === 0) {
-        setCurrentWeekId(null);
-      } else if (!currentWeekId || !mapped.some((w) => w.id === currentWeekId)) {
-        setCurrentWeekId(mapped[mapped.length - 1].id); // última creada
+      if (mapped.length === 0) setCurrentWeekId(null);
+      else if (!currentWeekId || !mapped.some(w => w.id === currentWeekId)) {
+        setCurrentWeekId(mapped[mapped.length - 1].id);
       }
     } catch (e) {
       console.error("refresh error:", e);
@@ -223,7 +227,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addExpense = async (weekId: string, activity: string, amount: number) => {
     try {
-      await dbAddExpense({ week_id: weekId, activity, amount });
+      await dbAddExpense({ week_id: weekId, activity, amount, paid: false });
       await recomputeChain();
       await refresh();
       setCurrentWeekId(weekId);
@@ -241,6 +245,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.error("deleteExpense error:", e);
       alert("Error deleting expense. Check console.");
+    }
+  };
+  const toggleExpensePaid = async (weekId: string, expenseId: string) => {
+    // 1) Optimistic update (UI instantáneo)
+    setWeeks((prev) =>
+      prev.map((w) => {
+        if (w.id !== weekId) return w;
+        return {
+          ...w,
+          expenses: w.expenses.map((e) =>
+            e.id === expenseId ? { ...e, paid: !e.paid } : e
+          ),
+        };
+      })
+    );
+
+    // 2) Guardar en DB (sin bloquear UI)
+    try {
+      // obtenemos el valor "nuevo" desde el estado previo (más seguro: calcúlalo)
+      const week = weeks.find((w) => w.id === weekId);
+      const exp = week?.expenses.find((e) => e.id === expenseId);
+      const newPaid = !(exp?.paid ?? false);
+
+      await dbUpdateExpense(expenseId, { paid: newPaid });
+
+      // ✅ NO recomputeChain, NO refresh aquí
+    } catch (e) {
+      console.error("toggleExpensePaid error:", e);
+
+      // 3) Rollback si falla
+      setWeeks((prev) =>
+        prev.map((w) => {
+          if (w.id !== weekId) return w;
+          return {
+            ...w,
+            expenses: w.expenses.map((e) =>
+              e.id === expenseId ? { ...e, paid: !e.paid } : e
+            ),
+          };
+        })
+      );
+
+      alert("Error updating paid status.");
     }
   };
 
@@ -292,6 +339,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateWeekIncome,
         updateExpense,
         updateSettings,
+        toggleExpensePaid,
         resetAllData,
         refresh,
       }}

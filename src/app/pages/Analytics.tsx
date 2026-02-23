@@ -1,66 +1,95 @@
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, DollarSign, PieChart as PieChartIcon, BarChart3 } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import { TrendingUp, DollarSign, PieChart as PieChartIcon, BarChart3 } from "lucide-react";
+import { useApp } from "../context/AppContext";
 
-const CATEGORY_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+const CATEGORY_COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
 
 export function Analytics() {
   const { weeks } = useApp();
 
-  // Monthly spending data (simulated from weeks)
+  // ✅ Tu formatDate (LOCAL)
+  const formatDate = (dateStr: string) => {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const date = new Date(y, m - 1, d); // ✅ LOCAL (no UTC)
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  // ✅ Para agrupar por mes de forma consistente (LOCAL)
+  const formatMonthKey = (dateStr: string) => {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const date = new Date(y, m - 1, d); // ✅ LOCAL
+    return date.toLocaleDateString("en-US", { month: "short" }); // "Feb", "Mar", etc.
+  };
+
+  // Monthly spending data
   const monthlyMap = new Map<string, number>();
 
-  weeks.forEach(week => {
-    const month = new Date(week.startDate).toLocaleDateString("en-US", { month: "short" });
-
-    const totalExpenses = week.expenses.reduce((sum, e) => sum + e.amount, 0);
-
-    const current = monthlyMap.get(month) || 0;
-    monthlyMap.set(month, current + totalExpenses);
+  weeks.forEach((week) => {
+    const monthKey = formatMonthKey(week.startDate);
+    const totalWeekExpenses = week.expenses.reduce((sum, e) => sum + e.amount, 0);
+    monthlyMap.set(monthKey, (monthlyMap.get(monthKey) || 0) + totalWeekExpenses);
   });
 
-  const monthlyData = Array.from(monthlyMap.entries()).map(([month, spending]) => ({
-    month,
-    spending
-  }));
+  // ✅ Ordenar meses en orden real (enero..dic)
+  const monthOrder = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  const monthlyData = Array.from(monthlyMap.entries())
+    .map(([month, spending]) => ({ month, spending }))
+    .sort((a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month));
 
   // Weekly comparison data
-  const weeklyComparison = weeks.map((week, index) => ({
-    week: new Date(week.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+  const weeklyComparison = weeks.map((week) => ({
+    week: formatDate(week.startDate), // ✅ usando tu formatDate
     income: week.income,
-    expenses: week.expenses.reduce((sum, exp) => sum + exp.amount, 0)
+    expenses: week.expenses.reduce((sum, exp) => sum + exp.amount, 0),
   }));
 
   // Category breakdown (aggregate all expenses by activity)
   const categoryMap = new Map<string, number>();
-  weeks.forEach(week => {
-    week.expenses.forEach(expense => {
-      const current = categoryMap.get(expense.activity) || 0;
-      categoryMap.set(expense.activity, current + expense.amount);
+  weeks.forEach((week) => {
+    week.expenses.forEach((expense) => {
+      categoryMap.set(expense.activity, (categoryMap.get(expense.activity) || 0) + expense.amount);
     });
   });
 
   const categoryData = Array.from(categoryMap.entries()).map(([name, value]) => ({
     name,
-    value
+    value,
   }));
 
   // Income vs Expense trend
-  const trendData = weeks.map((week, index) => {
-    const totalExpenses = week.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const trendData = weeks.map((week) => {
+    const totalWeekExpenses = week.expenses.reduce((sum, exp) => sum + exp.amount, 0);
     return {
-        week: new Date(week.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-        income: week.income,
-      expenses: totalExpenses,
-      net: week.income - totalExpenses
+      week: formatDate(week.startDate), // ✅ usando tu formatDate
+      income: week.income,
+      expenses: totalWeekExpenses,
+      net: week.income - totalWeekExpenses,
     };
   });
 
   // Calculate total stats
   const totalIncome = weeks.reduce((sum, w) => sum + w.income, 0);
-  const totalExpenses = weeks.reduce((sum, w) => sum + w.expenses.reduce((s, e) => s + e.amount, 0), 0);
+  const totalExpenses = weeks.reduce(
+    (sum, w) => sum + w.expenses.reduce((s, e) => s + e.amount, 0),
+    0
+  );
   const avgWeeklySpending = weeks.length > 0 ? totalExpenses / weeks.length : 0;
-  const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100) : 0;
+  const savingsRate = totalIncome > 0 ? (((totalIncome - totalExpenses) / totalIncome) * 100) : 0;
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
@@ -125,7 +154,7 @@ export function Analytics() {
             {/* Monthly Spending Bar Chart */}
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-6">Monthly Spending</h3>
-              <div style={{ width: '100%', height: '300px' }}>
+              <div style={{ width: "100%", height: "300px" }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={monthlyData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -141,7 +170,7 @@ export function Analytics() {
             {/* Weekly Comparison Line Chart */}
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-6">Weekly Comparison</h3>
-              <div style={{ width: '100%', height: '300px' }}>
+              <div style={{ width: "100%", height: "300px" }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={weeklyComparison}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -159,7 +188,7 @@ export function Analytics() {
             {/* Expense Category Pie Chart */}
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-6">Expense Categories</h3>
-              <div style={{ width: '100%', height: '300px' }}>
+              <div style={{ width: "100%", height: "300px" }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -169,11 +198,13 @@ export function Analytics() {
                       labelLine={false}
                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                       outerRadius={100}
-                      fill="#8884d8"
                       dataKey="value"
                     >
-                      {categoryData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                      {categoryData.map((_, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                        />
                       ))}
                     </Pie>
                     <Tooltip />
@@ -185,7 +216,7 @@ export function Analytics() {
             {/* Income vs Expense Trend */}
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-6">Income vs Expense Trend</h3>
-              <div style={{ width: '100%', height: '300px' }}>
+              <div style={{ width: "100%", height: "300px" }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={trendData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -208,7 +239,9 @@ export function Analytics() {
               <div>
                 <p className="text-sm text-gray-600 mb-1">Top Spending Category</p>
                 <p className="text-lg font-semibold text-gray-900">
-                  {categoryData.length > 0 ? categoryData.reduce((max, cat) => cat.value > max.value ? cat : max).name : 'N/A'}
+                  {categoryData.length > 0
+                    ? categoryData.reduce((max, cat) => (cat.value > max.value ? cat : max)).name
+                    : "N/A"}
                 </p>
               </div>
               <div>
