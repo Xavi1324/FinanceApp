@@ -1,46 +1,27 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
-import {
-  dbAddExpense,
-  dbCreateWeek,
-  dbDeleteExpense,
-  dbGetExpenses,
-  dbGetWeeks,
-  dbUpdateWeekIncome,
-  DbExpenseRow,
-  DbWeekRow,
-  dbUpdateExpense,
-} from "../lib/db";
-import { supabase } from "../lib/supabase";
 import { useAuth } from "./AuthContext";
+import { Week, Settings } from "../types";
+import {
+  recomputeChain,
+  loadWeeks,
+  createWeek,
+  removeWeek,
+  createExpense,
+  removeExpense,
+  patchExpense,
+  patchExpensePaid,
+  patchWeekIncome,
+  clearAllData,
+} from "../services/weekService";
 
-export interface Expense {
-  id: string;
-  activity: string;
-  amount: number;
-  paid: boolean; 
-}
-
-export interface Week {
-  id: string;
-  startDate: string;   // "YYYY-MM-DD"
-  endDate: string;     // "YYYY-MM-DD"
-  initialBalance: number;
-  income: number;
-  expenses: Expense[];
-}
-
-interface Settings {
-  currency: string;
-  darkMode: boolean;
-  defaultWeeklyIncome: number;
-}
+// Re-exportar tipos para no romper imports existentes
+export type { Expense, Week, Settings } from "../types";
 
 interface AppContextType {
   weeks: Week[];
   currentWeekId: string | null;
   settings: Settings;
 
-  // Actions
   addWeek: (startDate: string, endDate: string) => Promise<void>;
   deleteWeek: (id: string) => Promise<void>;
   setCurrentWeek: (id: string) => void;
@@ -55,7 +36,6 @@ interface AppContextType {
   updateSettings: (settings: Partial<Settings>) => void;
   resetAllData: () => Promise<void>;
 
-  // helpers
   refresh: () => Promise<void>;
 }
 
@@ -67,141 +47,77 @@ const defaultSettings: Settings = {
   defaultWeeklyIncome: 500,
 };
 
-function toNumber(v: number | string | null | undefined) {
-  if (v === null || v === undefined) return 0;
-  const n = typeof v === "number" ? v : Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
+const SETTINGS_KEY = "financeapp-settings";
 
-function mapExpenseRow(r: DbExpenseRow): Expense {
-  return {
-    id: r.id,
-    activity: r.activity,
-    amount: toNumber(r.amount),
-    paid: r.paid ?? false,
-  };
-}
-
-function mapWeekRow(r: DbWeekRow, expenses: Expense[]): Week {
-  return {
-    id: r.id,
-    startDate: r.start_date,
-    endDate: r.end_date,
-    initialBalance: toNumber(r.initial_balance),
-    income: toNumber(r.income),
-    expenses,
-  };
+function loadSettings(): Settings {
+  try {
+    const saved = localStorage.getItem(SETTINGS_KEY);
+    return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
+  } catch {
+    return defaultSettings;
+  }
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [currentWeekId, setCurrentWeekId] = useState<string | null>(null);
-  const [settings, setSettings] = useState<Settings>(defaultSettings);
-  const [loading, setLoading] = useState(false);
+  const [settings, setSettings] = useState<Settings>(loadSettings);
   const { user, loading: authLoading } = useAuth();
   const userId = user?.id ?? null;
+
+  useEffect(() => {
+    if (settings.darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [settings.darkMode]);
 
   const currentWeek = useMemo(
     () => weeks.find((w) => w.id === currentWeekId) ?? (weeks.length ? weeks[0] : null),
     [weeks, currentWeekId]
   );
 
-  const getWeekTotals = (week: Week) => {
+  const getWeekRemainingBalance = (week: Week) => {
     const totalExpenses = week.expenses.reduce((sum, e) => sum + e.amount, 0);
-    const currentBalance = week.initialBalance + week.income;
-    const remainingBalance = currentBalance - totalExpenses;
-    return { totalExpenses, currentBalance, remainingBalance };
-  };
-  const updateExpense = async (expenseId: string, activity: string, amount: number) => {
-    try {
-      await dbUpdateExpense(expenseId, { activity, amount });
-      await recomputeChain();
-      await refresh();
-    } catch (e) {
-      console.error("updateExpense error:", e);
-      alert("Error updating expense. Check console.");
-    }
+    return week.initialBalance + week.income - totalExpenses;
   };
 
   const refresh = async () => {
-    setLoading(true);
     try {
-      const { data } = await supabase.auth.getUser();
-      const uid = data.user?.id;
-      if (!uid) {
-        setWeeks([]);
-        setCurrentWeekId(null);
-        return;
-      }
-
-      const weekRows = await dbGetWeeks();
-
-      const expensesByWeek = await Promise.all(
-        weekRows.map(async (w) => {
-          const expRows = await dbGetExpenses(w.id);
-          return { weekId: w.id, expenses: expRows.map(mapExpenseRow) };
-        })
-      );
-
-      const expMap = new Map(expensesByWeek.map(x => [x.weekId, x.expenses]));
-
-      const mapped: Week[] = weekRows.map(w => mapWeekRow(w, expMap.get(w.id) ?? []));
-
+      const mapped = await loadWeeks();
       setWeeks(mapped);
-
-      if (mapped.length === 0) setCurrentWeekId(null);
-      else if (!currentWeekId || !mapped.some(w => w.id === currentWeekId)) {
-        setCurrentWeekId(mapped[mapped.length - 1].id);
+      if (mapped.length === 0) {
+        setCurrentWeekId(null);
+      } else if (!currentWeekId || !mapped.some((w) => w.id === currentWeekId)) {
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        const todayWeek = mapped.find((w) => w.startDate <= todayStr && w.endDate >= todayStr);
+        setCurrentWeekId(todayWeek?.id ?? mapped[mapped.length - 1].id);
       }
     } catch (e) {
       console.error("refresh error:", e);
-    } finally {
-      setLoading(false);
     }
   };
-  const recomputeChain = async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error) throw error;
-
-    const uid = data.user?.id;
-    if (!uid) return;
-
-    const { error: rpcError } = await supabase.rpc("recompute_week_chain", { p_user: uid });
-    if (rpcError) throw rpcError;
-  };
-
 
   useEffect(() => {
-    // Espera a que el AuthContext termine de resolver si hay sesión o no
     if (authLoading) return;
-
-    // Si no hay usuario (logout) => limpia estado
     if (!userId) {
       setWeeks([]);
       setCurrentWeekId(null);
-      setLoading(false);
       return;
     }
-
-    // Si hay usuario (login / cambio de usuario) => carga data
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, authLoading]);
 
   const addWeek = async (startDate: string, endDate: string) => {
     try {
-      // Usar remaining de la semana actual (si existe) como initial_balance
-      const initialFromPrev = currentWeek ? getWeekTotals(currentWeek).remainingBalance : 0;
-
-      const newWeek = await dbCreateWeek({
-        start_date: startDate,
-        end_date: endDate,
-        initial_balance: Number(initialFromPrev.toFixed(2)),
-        income: settings.defaultWeeklyIncome,
-      });
-      await recomputeChain();
+      const initialBalance = currentWeek ? getWeekRemainingBalance(currentWeek) : 0;
+      const newWeekId = await createWeek(startDate, endDate, initialBalance, settings.defaultWeeklyIncome);
+      await recomputeChain(userId!);
       await refresh();
-      setCurrentWeekId(newWeek.id);
+      setCurrentWeekId(newWeekId);
     } catch (e) {
       console.error("addWeek error:", e);
       alert("Error creating week. Check console.");
@@ -210,12 +126,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const deleteWeek = async (id: string) => {
     try {
-      // Borrar week (cascade borra expenses)
-      const { error } = await supabase.from("weeks").delete().eq("id", id);
-      if (error) throw error;
-
-      // refrescar y arreglar selección
-      await recomputeChain();
+      await removeWeek(id);
+      await recomputeChain(userId!);
       await refresh();
     } catch (e) {
       console.error("deleteWeek error:", e);
@@ -223,101 +135,148 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const setCurrentWeek = (id: string) => setCurrentWeekId(id);
-
   const addExpense = async (weekId: string, activity: string, amount: number) => {
+    const tempId = `temp-${Date.now()}`;
+    setWeeks((prev) =>
+      prev.map((w) =>
+        w.id !== weekId ? w : { ...w, expenses: [...w.expenses, { id: tempId, activity, amount, paid: false }] }
+      )
+    );
+    setCurrentWeekId(weekId);
+
     try {
-      await dbAddExpense({ week_id: weekId, activity, amount, paid: false });
-      await recomputeChain();
-      await refresh();
-      setCurrentWeekId(weekId);
+      const savedExpense = await createExpense(weekId, activity, amount);
+      setWeeks((prev) =>
+        prev.map((w) =>
+          w.id !== weekId ? w : { ...w, expenses: w.expenses.map((e) => (e.id === tempId ? savedExpense : e)) }
+        )
+      );
+      recomputeChain(userId!).catch(console.error);
     } catch (e) {
       console.error("addExpense error:", e);
+      setWeeks((prev) =>
+        prev.map((w) =>
+          w.id !== weekId ? w : { ...w, expenses: w.expenses.filter((e) => e.id !== tempId) }
+        )
+      );
       alert("Error adding expense. Check console.");
     }
   };
 
   const deleteExpense = async (_weekId: string, expenseId: string) => {
+    const weekWithExpense = weeks.find((w) => w.expenses.some((e) => e.id === expenseId));
+    const expenseToRemove = weekWithExpense?.expenses.find((e) => e.id === expenseId);
+
+    setWeeks((prev) =>
+      prev.map((w) => ({ ...w, expenses: w.expenses.filter((e) => e.id !== expenseId) }))
+    );
+
     try {
-      await dbDeleteExpense(expenseId);
-      await recomputeChain();
-      await refresh();
+      await removeExpense(expenseId);
+      recomputeChain(userId!).catch(console.error);
     } catch (e) {
       console.error("deleteExpense error:", e);
+      if (weekWithExpense && expenseToRemove) {
+        const exp = expenseToRemove;
+        setWeeks((prev) =>
+          prev.map((w) =>
+            w.id !== weekWithExpense.id ? w : { ...w, expenses: [...w.expenses, exp] }
+          )
+        );
+      }
       alert("Error deleting expense. Check console.");
     }
   };
+
   const toggleExpensePaid = async (weekId: string, expenseId: string) => {
-    // 1) Optimistic update (UI instantáneo)
+    // Optimistic update
     setWeeks((prev) =>
-      prev.map((w) => {
-        if (w.id !== weekId) return w;
-        return {
-          ...w,
-          expenses: w.expenses.map((e) =>
-            e.id === expenseId ? { ...e, paid: !e.paid } : e
-          ),
-        };
-      })
+      prev.map((w) =>
+        w.id !== weekId
+          ? w
+          : { ...w, expenses: w.expenses.map((e) => (e.id === expenseId ? { ...e, paid: !e.paid } : e)) }
+      )
     );
 
-    // 2) Guardar en DB (sin bloquear UI)
     try {
-      // obtenemos el valor "nuevo" desde el estado previo (más seguro: calcúlalo)
       const week = weeks.find((w) => w.id === weekId);
       const exp = week?.expenses.find((e) => e.id === expenseId);
       const newPaid = !(exp?.paid ?? false);
-
-      await dbUpdateExpense(expenseId, { paid: newPaid });
-
-      // ✅ NO recomputeChain, NO refresh aquí
+      await patchExpensePaid(expenseId, newPaid);
     } catch (e) {
       console.error("toggleExpensePaid error:", e);
-
-      // 3) Rollback si falla
+      // Rollback
       setWeeks((prev) =>
-        prev.map((w) => {
-          if (w.id !== weekId) return w;
-          return {
-            ...w,
-            expenses: w.expenses.map((e) =>
-              e.id === expenseId ? { ...e, paid: !e.paid } : e
-            ),
-          };
-        })
+        prev.map((w) =>
+          w.id !== weekId
+            ? w
+            : { ...w, expenses: w.expenses.map((e) => (e.id === expenseId ? { ...e, paid: !e.paid } : e)) }
+        )
       );
-
       alert("Error updating paid status.");
     }
   };
 
   const updateWeekIncome = async (weekId: string, income: number) => {
+    const originalIncome = weeks.find((w) => w.id === weekId)?.income;
+
+    setWeeks((prev) => prev.map((w) => (w.id !== weekId ? w : { ...w, income })));
+    setCurrentWeekId(weekId);
+
     try {
-      await dbUpdateWeekIncome(weekId, income);
-      await recomputeChain();
-      await refresh();
-      setCurrentWeekId(weekId);
+      await patchWeekIncome(weekId, income);
+      recomputeChain(userId!).then(() => refresh()).catch(console.error);
     } catch (e) {
       console.error("updateWeekIncome error:", e);
+      if (originalIncome !== undefined) {
+        setWeeks((prev) => prev.map((w) => (w.id !== weekId ? w : { ...w, income: originalIncome })));
+      }
       alert("Error updating income. Check console.");
     }
   };
 
+  const updateExpense = async (expenseId: string, activity: string, amount: number) => {
+    const originalExpense = weeks.flatMap((w) => w.expenses).find((e) => e.id === expenseId);
+
+    setWeeks((prev) =>
+      prev.map((w) => ({
+        ...w,
+        expenses: w.expenses.map((e) => (e.id === expenseId ? { ...e, activity, amount } : e)),
+      }))
+    );
+
+    try {
+      await patchExpense(expenseId, activity, amount);
+      recomputeChain(userId!).catch(console.error);
+    } catch (e) {
+      console.error("updateExpense error:", e);
+      if (originalExpense) {
+        const orig = originalExpense;
+        setWeeks((prev) =>
+          prev.map((w) => ({
+            ...w,
+            expenses: w.expenses.map((e) => (e.id === expenseId ? orig : e)),
+          }))
+        );
+      }
+      alert("Error updating expense. Check console.");
+    }
+  };
+
   const updateSettings = (newSettings: Partial<Settings>) => {
-    setSettings((prev) => ({ ...prev, ...newSettings }));
+    setSettings((prev) => {
+      const updated = { ...prev, ...newSettings };
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const resetAllData = async () => {
-    // ⚠️ Esto borra TODO. Útil para dev.
     const ok = window.confirm("This will DELETE all weeks & expenses in Supabase. Continue?");
     if (!ok) return;
-
     try {
-      // delete weeks => cascade expenses
-      const { error } = await supabase.from("weeks").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      if (error) throw error;
-
-      await recomputeChain();
+      await clearAllData();
+      await recomputeChain(userId!);
       await refresh();
     } catch (e) {
       console.error("resetAllData error:", e);
@@ -333,7 +292,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         settings,
         addWeek,
         deleteWeek,
-        setCurrentWeek,
+        setCurrentWeek: setCurrentWeekId,
         addExpense,
         deleteExpense,
         updateWeekIncome,
@@ -344,7 +303,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         refresh,
       }}
     >
-      {/* opcional: puedes mostrar loading */}
       {children}
     </AppContext.Provider>
   );

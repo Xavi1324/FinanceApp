@@ -15,7 +15,7 @@ import { AddWeekModal } from "../components/AddWeekModal";
 import { AddExpenseModal } from "../components/AddExpenseModal";
 import { EditIncomeModal } from "../components/EditIncomeModal";
 import { EditExpenseModal } from "../components/EditExpenseModal";
-import { DeleteExpenseModal } from "../components/DeleteExpenseModal"; // ✅ NEW
+import { DeleteExpenseModal } from "../components/DeleteExpenseModal";
 
 const COLORS = ["#EF4444", "#E5E7EB"];
 
@@ -37,7 +37,6 @@ export function Dashboard() {
   const [isIncomeModalOpen, setIsIncomeModalOpen] = useState(false);
   const [isEditExpenseModalOpen, setIsEditExpenseModalOpen] = useState(false);
 
-  // ✅ Delete modal state
   const [isDeleteExpenseModalOpen, setIsDeleteExpenseModalOpen] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState<{
     id: string;
@@ -47,16 +46,14 @@ export function Dashboard() {
 
   const [selectedExpenseId, setSelectedExpenseId] = useState("");
 
-  // ✅ puede ser null si no hay weeks
   const currentWeek = weeks.find((w) => w.id === currentWeekId) ?? weeks[0] ?? null;
 
   const formatDate = (dateStr: string) => {
     const [y, m, d] = dateStr.split("-").map(Number);
-    const date = new Date(y, m - 1, d); // LOCAL (no UTC)
+    const date = new Date(y, m - 1, d);
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  // ✅ ahora abre modal en vez de window.confirm
   const handleDeleteExpense = (expenseId: string, activity: string, amount: number) => {
     setExpenseToDelete({ id: expenseId, activity, amount });
     setIsDeleteExpenseModalOpen(true);
@@ -67,7 +64,6 @@ export function Dashboard() {
     setIsEditExpenseModalOpen(true);
   };
 
-  // ✅ si hay week, calculamos stats; si no, valores default
   const totalExpenses = currentWeek
     ? currentWeek.expenses.reduce((sum, exp) => sum + exp.amount, 0)
     : 0;
@@ -92,23 +88,22 @@ export function Dashboard() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
-      {/* ✅ Top Controls SIEMPRE */}
+      {/* Top Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 md:mb-8 gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-2">
+          <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
             Weekly Budget Overview
           </h1>
-          <p className="text-gray-500 text-sm md:text-base">Manage your weekly finances</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm md:text-base">Manage your weekly finances</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          {/* ✅ Week Selector solo si hay weeks */}
           {weeks.length > 0 && (
             <div className="relative">
               <select
                 value={currentWeekId || weeks[0]?.id || ""}
                 onChange={(e) => setCurrentWeek(e.target.value)}
-                className="appearance-none bg-white border border-gray-300 rounded-lg pl-4 pr-10 py-3 font-medium text-gray-900 hover:border-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer w-full sm:w-auto"
+                className="appearance-none bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg pl-4 pr-10 py-3 font-medium text-gray-900 dark:text-gray-100 hover:border-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer w-full sm:w-auto"
               >
                 {weeks.map((week) => (
                   <option key={week.id} value={week.id}>
@@ -116,11 +111,10 @@ export function Dashboard() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 dark:text-gray-400 pointer-events-none" />
             </div>
           )}
 
-          {/* ✅ Add Week siempre visible */}
           <button
             onClick={() => setIsWeekModalOpen(true)}
             className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-5 py-3 rounded-lg font-medium hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg"
@@ -134,12 +128,12 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* ✅ Empty State si no hay weeks */}
+      {/* Empty State */}
       {!currentWeek ? (
-        <div className="bg-white rounded-xl shadow-sm p-8 md:p-12 text-center">
-          <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">No weeks yet</h3>
-          <p className="text-gray-500">
-            Click <span className="font-medium text-gray-900">Create first week</span> to
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-8 md:p-12 text-center">
+          <h3 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No weeks yet</h3>
+          <p className="text-gray-500 dark:text-gray-400">
+            Click <span className="font-medium text-gray-900 dark:text-gray-100">Create first week</span> to
             start tracking your budget.
           </p>
         </div>
@@ -150,22 +144,22 @@ export function Dashboard() {
               {/* Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
                 {/* Card 1: Initial Balance */}
-                <div className="bg-white rounded-xl p-6 shadow-sm">
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
                   <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                      <Wallet className="w-5 h-5 text-gray-600" />
+                    <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                      <Wallet className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                     </div>
                   </div>
-                  <p className="text-sm text-gray-500 mb-1">Initial Balance</p>
-                  <p className="text-2xl font-semibold text-gray-900">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Initial Balance</p>
+                  <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
                     ${currentWeek.initialBalance.toFixed(2)}
                   </p>
                 </div>
 
                 {/* Card 2: Income */}
-                <div className="bg-white rounded-xl p-6 shadow-sm relative">
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm relative">
                   <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-lg bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
                       <TrendingUp className="w-5 h-5 text-green-600" />
                     </div>
                     <button
@@ -175,20 +169,20 @@ export function Dashboard() {
                       <Edit2 className="w-4 h-4" />
                     </button>
                   </div>
-                  <p className="text-sm text-gray-500 mb-1">Income</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Income</p>
                   <p className="text-2xl font-semibold text-green-600">
                     +${currentWeek.income.toFixed(2)}
                   </p>
                 </div>
 
                 {/* Card 3: Total Expenses */}
-                <div className="bg-white rounded-xl p-6 shadow-sm">
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
                   <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-900/30 flex items-center justify-center">
                       <TrendingDown className="w-5 h-5 text-red-600" />
                     </div>
                   </div>
-                  <p className="text-sm text-gray-500 mb-1">Total Weekly Expenses</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Weekly Expenses</p>
                   <p className="text-2xl font-semibold text-red-600">
                     -${totalExpenses.toFixed(2)}
                   </p>
@@ -209,9 +203,9 @@ export function Dashboard() {
               </div>
 
               {/* Expenses Table */}
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-                  <h2 className="text-xl font-semibold text-gray-900">Expense Breakdown</h2>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Expense Breakdown</h2>
                   <button
                     onClick={() => setIsExpenseModalOpen(true)}
                     className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors"
@@ -224,17 +218,17 @@ export function Dashboard() {
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-gray-100">
-                        <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 w-12">
+                      <tr className="border-b border-gray-100 dark:border-gray-700">
+                        <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400 w-12">
                           Paid
                         </th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">
+                        <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
                           Activity
                         </th>
-                        <th className="text-right px-6 py-4 text-sm font-medium text-gray-500">
+                        <th className="text-right px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
                           Amount
                         </th>
-                        <th className="text-right px-6 py-4 text-sm font-medium text-gray-500">
+                        <th className="text-right px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
                           Actions
                         </th>
                       </tr>
@@ -243,7 +237,7 @@ export function Dashboard() {
                     <tbody>
                       {currentWeek.expenses.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                          <td colSpan={4} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                             No expenses yet. Click "Add Expense" to get started.
                           </td>
                         </tr>
@@ -251,7 +245,7 @@ export function Dashboard() {
                         currentWeek.expenses.map((expense, index) => (
                           <tr
                             key={expense.id}
-                            className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} ${expense.paid ? "opacity-60" : ""}`}
+                            className={`${index % 2 === 0 ? "bg-white dark:bg-gray-800" : "bg-gray-50 dark:bg-gray-700/50"} ${expense.paid ? "opacity-60" : ""}`}
                           >
                             <td className="px-6 py-4">
                               <input
@@ -262,11 +256,11 @@ export function Dashboard() {
                               />
                             </td>
 
-                            <td className={`px-6 py-4 text-gray-900 ${expense.paid ? "line-through" : ""}`}>
+                            <td className={`px-6 py-4 text-gray-900 dark:text-gray-100 ${expense.paid ? "line-through" : ""}`}>
                               {expense.activity}
                             </td>
 
-                            <td className={`px-6 py-4 text-right text-gray-900 font-medium ${expense.paid ? "line-through" : ""}`}>
+                            <td className={`px-6 py-4 text-right text-gray-900 dark:text-gray-100 font-medium ${expense.paid ? "line-through" : ""}`}>
                               ${expense.amount.toFixed(2)}
                             </td>
 
@@ -292,11 +286,11 @@ export function Dashboard() {
 
                     {currentWeek.expenses.length > 0 && (
                       <tfoot>
-                        <tr className="border-t-2 border-gray-200 bg-gray-50">
-                          <td className="px-6 py-4 font-semibold text-gray-900" colSpan={2}>
+                        <tr className="border-t-2 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50">
+                          <td className="px-6 py-4 font-semibold text-gray-900 dark:text-gray-100" colSpan={2}>
                             Total
                           </td>
-                          <td className="px-6 py-4 text-right font-semibold text-gray-900">
+                          <td className="px-6 py-4 text-right font-semibold text-gray-900 dark:text-gray-100">
                             ${totalExpenses.toFixed(2)}
                           </td>
                           <td />
@@ -311,8 +305,8 @@ export function Dashboard() {
             {/* Right Sidebar */}
             <div className="space-y-6">
               {/* Donut Chart */}
-              <div className="bg-white rounded-xl p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">Spending Overview</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Spending Overview</h3>
                 <div className="mb-6" style={{ width: "100%", height: "192px" }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -337,18 +331,18 @@ export function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                      <span className="text-sm text-gray-600">Spent</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Spent</span>
                     </div>
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       ${chartData[0].value.toFixed(2)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full bg-gray-300"></div>
-                      <span className="text-sm text-gray-600">Remaining</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Remaining</span>
                     </div>
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       ${chartData[1].value.toFixed(2)}
                     </span>
                   </div>
@@ -356,22 +350,22 @@ export function Dashboard() {
               </div>
 
               {/* Progress */}
-              <div className="bg-white rounded-xl p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Income Usage</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Income Usage</h3>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Percentage Used</span>
-                    <span className="text-2xl font-semibold text-gray-900">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Percentage Used</span>
+                    <span className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
                       {percentageSpent}%
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                  <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3 overflow-hidden">
                     <div
                       className="bg-gradient-to-r from-red-500 to-red-600 h-full rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(parseFloat(percentageSpent), 100)}%` }}
                     ></div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-3">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
                     You've used {percentageSpent}% of your weekly income of $
                     {currentWeek.income.toFixed(2)}
                   </p>
@@ -379,12 +373,12 @@ export function Dashboard() {
               </div>
 
               {/* Quick Stats */}
-              <div className="bg-white rounded-xl p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Quick Stats</h3>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Largest Expense</span>
-                    <span className="text-sm font-medium text-gray-900">
+                  <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Largest Expense</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {currentWeek.expenses.length > 0
                         ? `${
                             currentWeek.expenses.reduce((max, exp) =>
@@ -399,16 +393,16 @@ export function Dashboard() {
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Total Transactions</span>
-                    <span className="text-sm font-medium text-gray-900">
+                  <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Total Transactions</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {currentWeek.expenses.length}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between py-2">
-                    <span className="text-sm text-gray-600">Average per Day</span>
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Average per Day</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       ${(totalExpenses / 7).toFixed(2)}
                     </span>
                   </div>
@@ -417,7 +411,6 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* Modals que dependen de currentWeek */}
           <AddExpenseModal
             isOpen={isExpenseModalOpen}
             onClose={() => setIsExpenseModalOpen(false)}
@@ -436,7 +429,6 @@ export function Dashboard() {
             currentExpense={currentWeek.expenses.find((exp) => exp.id === selectedExpenseId)}
           />
 
-          {/* ✅ DeleteExpenseModal */}
           <DeleteExpenseModal
             isOpen={isDeleteExpenseModalOpen}
             onClose={() => {
@@ -455,11 +447,11 @@ export function Dashboard() {
         </>
       )}
 
-      {/* ✅ AddWeekModal siempre disponible */}
       <AddWeekModal
         isOpen={isWeekModalOpen}
         onClose={() => setIsWeekModalOpen(false)}
         onSave={addWeek}
+        lastEndDate={weeks[weeks.length - 1]?.endDate}
       />
     </div>
   );

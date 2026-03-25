@@ -12,7 +12,6 @@ export function EditIncomeModal({ isOpen, onClose, onSave, currentIncome }: Edit
   const [income, setIncome] = useState<string>('0.00');
   const [error, setError] = useState<string>('');
 
-  // ✅ Cada vez que se abre el modal o cambia el income actual, sincroniza el input
   useEffect(() => {
     if (isOpen) {
       setIncome(Number(currentIncome).toFixed(2));
@@ -27,7 +26,6 @@ export function EditIncomeModal({ isOpen, onClose, onSave, currentIncome }: Edit
 
     const n = Number(income);
 
-    // ✅ Validación fuerte
     if (!Number.isFinite(n)) {
       setError('Ingresa un número válido');
       return;
@@ -43,29 +41,24 @@ export function EditIncomeModal({ isOpen, onClose, onSave, currentIncome }: Edit
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50" onClick={onClose}></div>
 
-      {/* Modal */}
-      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+      <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-semibold text-gray-900">Editar Ingreso</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Editar Ingreso</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Ingreso Semanal
             </label>
 
             <div className="relative">
-              <span className="absolute left-4 top-3 text-gray-500">$</span>
+              <span className="absolute left-4 top-3 text-gray-500 dark:text-gray-400">$</span>
               <input
                 type="number"
                 step="0.01"
@@ -75,7 +68,7 @@ export function EditIncomeModal({ isOpen, onClose, onSave, currentIncome }: Edit
                   setError('');
                 }}
                 placeholder="0.00"
-                className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-8 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
             </div>
