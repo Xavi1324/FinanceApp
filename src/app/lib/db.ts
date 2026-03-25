@@ -113,6 +113,19 @@ export async function dbAddExpense(payload: {
   return data as DbExpenseRow;
 }
 
+export async function dbGetAllExpenses(): Promise<DbExpenseRow[]> {
+  const userId = await requireUserId();
+
+  const { data, error } = await supabase
+    .from("expenses")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as DbExpenseRow[];
+}
+
 export async function dbDeleteExpense(expenseId: string) {
   const userId = await requireUserId();
 
@@ -126,9 +139,8 @@ export async function dbDeleteExpense(expenseId: string) {
 }
 
 async function requireUserId() {
-  const { data, error } = await supabase.auth.getUser();
-  if (error) throw error;
-  const userId = data.user?.id;
+  const { data } = await supabase.auth.getSession();
+  const userId = data.session?.user?.id;
   if (!userId) throw new Error("Not authenticated");
   return userId;
 }

@@ -16,13 +16,13 @@ export function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen" style={{ backgroundColor: '#F8F9FB', fontFamily: 'Inter, sans-serif' }}>
+    <div className="flex h-screen bg-[#F8F9FB] dark:bg-gray-900" style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50 flex items-center justify-between px-4">
-        <h1 className="text-xl font-semibold text-gray-900">FinanceApp</h1>
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-50 flex items-center justify-between px-4">
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">FinanceApp</h1>
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-700 dark:text-gray-300"
         >
           {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
@@ -39,15 +39,15 @@ export function Layout() {
       {/* Left Sidebar */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-40
-        w-64 bg-white border-r border-gray-200 flex flex-col
+        w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col
         transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        <div className="p-6 border-b border-gray-200">
-          <h1 className="text-2xl font-semibold text-gray-900">FinanceApp</h1>
-          <p className="text-sm text-gray-500 mt-1">Personal Finance Tracker</p>
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">FinanceApp</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Personal Finance Tracker</p>
         </div>
-        
+
         <nav className="flex-1 p-4">
           <ul className="space-y-2">
             {navItems.map((item) => (
@@ -59,8 +59,8 @@ export function Layout() {
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                       isActive
-                        ? 'bg-blue-50 text-blue-600'
-                        : 'text-gray-700 hover:bg-gray-50'
+                        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                     }`
                   }
                 >
@@ -72,15 +72,14 @@ export function Layout() {
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-4 text-white">
             <p className="text-sm font-medium mb-1">Need help?</p>
             <p className="text-xs text-blue-100">Check our documentation</p>
           </div>
-          {/* Logout Button */}
           <button
             onClick={signOut}
-            className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
+            className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 transition-colors"
           >
             <LogOut className="w-5 h-5" />
             <span className="font-medium">Logout</span>
