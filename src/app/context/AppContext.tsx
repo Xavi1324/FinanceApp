@@ -66,12 +66,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const userId = user?.id ?? null;
 
   useEffect(() => {
-    if (settings.darkMode) {
+    if (userId && settings.darkMode) {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
     }
-  }, [settings.darkMode]);
+  }, [userId, settings.darkMode]);
 
   const currentWeek = useMemo(
     () => weeks.find((w) => w.id === currentWeekId) ?? (weeks.length ? weeks[0] : null),
